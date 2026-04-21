@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>otitis media synapses game</title>
+    <style>
+        :root {
+            --symptom: #4caf50; /* green */
+            --treatment: #2196f3; /* blue */
+            --lab: #9c27b0; /* purple */
+            --risk: #f44336; /* red */
+            --bg-color: #f8f9fa;
+            --tile-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            text-transform: lowercase;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 { margin-bottom: 5px; font-size: 24px; color: #333; }
+        .legend { font-size: 14px; color: #666; margin-bottom: 20px; }
+        .legend span { font-weight: bold; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .tile {
+            background: var(--tile-bg);
+            border-radius: 12px;
+            padding: 15px 10px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: relative;
+            transition: transform 0.2s, background 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .tile:hover { transform: translateY(-3px); }
+        .tile.selected { border-color: #000; background-color: #e9ecef; }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: lowercase;
+        }
+
+        button.submit {
+            background: #fbe9e7;
+            color: #ff5722;
+            border: none;
+        }
+
+        .mistakes { margin-top: 15px; color: #777; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>openent synapses</h1>
+        <p class="legend">
+            create four groups of four. each group has a <span style="color:var(--symptom)">symptom</span>, 
+            <span style="color:var(--treatment)">treatment</span>, <span style="color:var(--lab)">lab test</span>, and <span style="color:var(--risk)">risk factor</span>.
+        </p>
+    </div>
+
+    <div class="grid" id="gameGrid">
+        </div>
+
+    <div class="mistakes">mistakes remaining: ● ● ● ●</div>
+
+    <div class="controls">
+        <button onclick="shuffleGrid()">shuffle</button>
+        <button onclick="deselectAll()">deselect all</button>
+        <button class="submit" onclick="checkGroup()">submit</button>
+    </div>
+
+    <script>
+        const data = [
+            // group 1: chronic secretory o.m.
+            { text: "painless hearing loss", type: "symptom", color: "var(--symptom)", group: 1 },
+            { text: "grommet insertion", type: "treatment", color: "var(--treatment)", group: 1 },
+            { text: "tympanometry type b", type: "lab", color: "var(--lab)", group: 1 },
+            { text: "adenoid hypertrophy", type: "risk", color: "var(--risk)", group: 1 },
+            
+            // group 2: chronic adhesive o.m.
+            { text: "progressive deafness", type: "symptom", color: "var(--symptom)", group: 2 },
+            { text: "hearing aid", type: "treatment", color: "var(--treatment)", group: 2 },
+            { text: "microscopic examination", type: "lab", color: "var(--lab)", group: 2 },
+            { text: "eustachian tube dysfunction", type: "risk", color: "var(--risk)", group: 2 },
+
+            // group 3: tubotympanic (safe o.m.)
+            { text: "profuse mucoid discharge", type: "symptom", color: "var(--symptom)", group: 3 },
+            { text: "aural toilet and drops", type: "treatment", color: "var(--treatment)", group: 3 },
+            { text: "culture and sensitivity", type: "lab", color: "var(--lab)", group: 3 },
+            { text: "upper respiratory infection", type: "risk", color: "var(--risk)", group: 3 },
+
+            // group 4: atticoantral (unsafe o.m.)
+            { text: "scanty foul discharge", type: "symptom", color: "var(--symptom)", group: 4 },
+            { text: "mastoidectomy", type: "treatment", color: "var(--treatment)", group: 4 },
+            { text: "ct scan temporal bone", type: "lab", color: "var(--lab)", group: 4 },
+            { text: "marginal perforation", type: "risk", color: "var(--risk)", group: 4 }
+        ];
+
+        let selectedTiles = [];
+
+        function initGame() {
+            const grid = document.getElementById('gameGrid');
+            grid.innerHTML = '';
+            // shuffle initial data
+            const shuffled = [...data].sort(() => Math.random() - 0.5);
+            
+            shuffled.forEach(item => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.innerHTML = `<div class="dot" style="background:${item.color}"></div>${item.text}`;
+                tile.onclick = () => toggleTile(tile, item);
+                grid.appendChild(tile);
+            });
+        }
+
+        function toggleTile(element, item) {
+            if (element.classList.contains('selected')) {
+                element.classList.remove('selected');
+                selectedTiles = selectedTiles.filter(t => t.text !== item.text);
+            } else if (selectedTiles.length < 4) {
+                element.classList.add('selected');
+                selectedTiles.push(item);
+            }
+        }
+
+        function deselectAll() {
+            document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
+            selectedTiles = [];
+        }
+
+        function shuffleGrid() {
+            initGame();
+            selectedTiles = [];
+        }
+
+        function checkGroup() {
+            if (selectedTiles.length !== 4) {
+                alert("please select 4 tiles");
+                return;
+            }
+            const firstGroup = selectedTiles[0].group;
+            const isCorrect = selectedTiles.every(t => t.group === firstGroup);
+            
+            if (isCorrect) {
+                alert("correct group found!");
+                // logic to remove or highlight tiles can be added here
+            } else {
+                alert("incorrect combination, try again.");
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
